@@ -3,6 +3,7 @@ import { ArrowRight, FileText, Kanban, Lock, Terminal } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Github } from "./github-icon";
+import { ThemeToggle } from "./theme-toggle";
 export function Login({
   configured,
   failed = false,
@@ -39,9 +40,12 @@ export function Login({
           <Kanban size={23} />
           <span>GitHub Kanban</span>
         </a>
-        <a href="/demo">
-          先試用看板 <ArrowRight size={16} />
-        </a>
+        <div className="login-actions">
+          <ThemeToggle />
+          <a href="/demo">
+            先試用看板 <ArrowRight size={16} />
+          </a>
+        </div>
       </header>
       <section className="login-content">
         <div className="login-copy">

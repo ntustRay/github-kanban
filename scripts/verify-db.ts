@@ -107,7 +107,8 @@ try {
     (
       await patchCard(
         request(tokenA, {
-          status: "verify",
+          status: "legacy",
+          position: -1024.5,
           notes: "private note A",
           version: 0,
         }),
@@ -127,15 +128,24 @@ try {
   const data = await other.json();
   expect(data.cards[0].notes).toBe("");
   expect(data.cards[0].status).toBe("backlog");
+  expect(
+    (
+      await patchCard(
+        request(tokenA, { position: -2048.25, version: 1 }),
+        context,
+      )
+    ).status,
+  ).toBe(200);
   const synced = await syncBoard(a);
   expect(synced[0].notes).toBe("private note A");
-  expect(synced[0].status).toBe("verify");
-  expect(synced[0].version).toBe(1);
+  expect(synced[0].status).toBe("legacy");
+  expect(synced[0].position).toBe(-2048.25);
+  expect(synced[0].version).toBe(2);
   const activity = await pool.query(
     "SELECT actor,notes_changed FROM board_activity WHERE user_id=$1",
     [a],
   );
-  expect(activity.rows.length).toBe(1);
+  expect(activity.rows.length).toBe(2);
   expect(activity.rows[0].actor).toBe("agent");
   await pool.query(
     "UPDATE board_tokens SET revoked_at=now() WHERE token_hash=$1",

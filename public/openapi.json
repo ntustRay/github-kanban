@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "GitHub Kanban API",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Personal board API. GitHub repositories are read-only. All operations use the token owner’s workspace."
   },
   "security": [
@@ -21,7 +21,14 @@
     "schemas": {
       "Status": {
         "type": "string",
-        "enum": ["backlog", "in_progress", "verify", "formal", "archive"]
+        "enum": [
+          "legacy",
+          "backlog",
+          "in_progress",
+          "verify",
+          "formal",
+          "archive"
+        ]
       },
       "Edit": {
         "type": "object",
@@ -33,6 +40,9 @@
           },
           {
             "required": ["notes"]
+          },
+          {
+            "required": ["position"]
           }
         ],
         "properties": {
@@ -46,6 +56,12 @@
           "notes": {
             "type": "string",
             "maxLength": 20000
+          },
+          "position": {
+            "type": "number",
+            "minimum": -1000000000000,
+            "maximum": 1000000000000,
+            "description": "Sort within a status by position ascending, then fullName. Use a midpoint between neighbours."
           }
         }
       },
@@ -72,6 +88,9 @@
           },
           "source": {
             "enum": ["auto", "manual"]
+          },
+          "position": {
+            "type": "number"
           }
         }
       }
@@ -140,7 +159,7 @@
     "/api/board/{repoId}": {
       "patch": {
         "operationId": "updateCard",
-        "summary": "Update status or notes, with a version check (write scope)",
+        "summary": "Update status, notes or position, with a version check (write scope)",
         "parameters": [
           {
             "name": "repoId",

@@ -1,5 +1,6 @@
 import type { Card, Document } from "./model";
 export const demoCards: Card[] = [
+  ["8", "old-prototype", "legacy", "保留舊版原型，暫不維護。", "JavaScript"],
   ["1", "new-idea", "backlog", "把想法拆成可執行的第一步。", null],
   ["2", "personal-api", "backlog", "個人 API，等待需求確認。", "TypeScript"],
   ["3", "my-project", "in_progress", "實作核心功能與資料流程。", "TypeScript"],
@@ -23,15 +24,17 @@ export const demoCards: Card[] = [
   isPrivate: false,
   language: language ?? null,
   status:
-    status === "in_progress"
-      ? "in_progress"
-      : status === "verify"
-        ? "verify"
-        : status === "formal"
-          ? "formal"
-          : status === "archive"
-            ? "archive"
-            : "backlog",
+    status === "legacy"
+      ? "legacy"
+      : status === "in_progress"
+        ? "in_progress"
+        : status === "verify"
+          ? "verify"
+          : status === "formal"
+            ? "formal"
+            : status === "archive"
+              ? "archive"
+              : "backlog",
   notes: "",
   reason: "示範資料，可自由調整",
   source: "auto",

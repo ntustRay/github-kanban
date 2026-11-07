@@ -1,6 +1,5 @@
 "use client";
 import {
-  Archive,
   ArrowLeft,
   BookOpen,
   Check,
@@ -11,7 +10,6 @@ import {
   LayoutGrid,
   Lock,
   LogOut,
-  MessageSquare,
   RefreshCw,
   Search,
   Terminal,
@@ -21,16 +19,12 @@ import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
 import { demoCards } from "@/lib/demo";
 import { jsonRequest } from "@/lib/http-client";
-import {
-  type Card,
-  descriptions,
-  labels,
-  type Status,
-  statuses,
-} from "@/lib/model";
+import { type Card, type Status, statuses } from "@/lib/model";
 import { AgentPanel } from "./agent-panel";
 import { Detail } from "./detail";
 import { Github } from "./github-icon";
+import { KanbanBoard } from "./kanban-board";
+import { ThemeToggle } from "./theme-toggle";
 
 const cardSchema = z.object({
   repoId: z.string(),
@@ -67,8 +61,8 @@ export function Workspace({
   const [language, setLanguage] = useState("all");
   const [view, setView] = useState<"board" | "agents">("board");
   const [selected, setSelected] = useState<string | null>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [pending, setPending] = useState<Set<string>>(new Set());
+  const pendingRef = useRef(new Set<string>());
   const started = useRef(false);
   const [lastSync, setLastSync] = useState("");
   const selectedCard = cards.find((c) => c.repoId === selected) ?? null;
@@ -129,11 +123,22 @@ export function Workspace({
   }
   async function save(
     card: Card,
-    changes: { status?: Status; notes?: string },
+    changes: { status?: Status; notes?: string; position?: number },
   ) {
-    if (busy) throw new Error("請等候目前的修改完成");
-    setBusy(card.repoId);
+    if (pendingRef.current.has(card.repoId))
+      throw new Error("此卡片仍在儲存中");
+    pendingRef.current.add(card.repoId);
+    setPending(new Set(pendingRef.current));
     setError("");
+    const optimistic: Card = {
+      ...card,
+      ...changes,
+      source: "manual",
+      reason: "手動設定",
+    };
+    setCards((prev) =>
+      prev.map((item) => (item.repoId === card.repoId ? optimistic : item)),
+    );
     try {
       let updated: Card;
       if (demo) {
@@ -159,11 +164,15 @@ export function Workspace({
       setMessage(`已儲存 ${updated.name}`);
       return updated;
     } catch (e) {
+      setCards((prev) =>
+        prev.map((item) => (item.repoId === card.repoId ? card : item)),
+      );
       const msg = e instanceof Error ? e.message : "儲存失敗";
       setError(msg);
       throw e;
     } finally {
-      setBusy(null);
+      pendingRef.current.delete(card.repoId);
+      setPending(new Set(pendingRef.current));
     }
   }
   const filtered = cards.filter(
@@ -266,10 +275,13 @@ export function Workspace({
               {view === "board" ? "Repositories" : "Agent access"}
             </strong>
           </div>
-          <span className="account-chip">
-            <Github size={16} />
-            {user.name}
-          </span>
+          <div className="topbar-actions">
+            <ThemeToggle />
+            <span className="account-chip">
+              <Github size={16} />
+              {user.name}
+            </span>
+          </div>
         </header>
         {demo ? (
           <div className="demo-banner">
@@ -307,7 +319,7 @@ export function Workspace({
                   type="button"
                   className="primary"
                   onClick={sync}
-                  disabled={syncing || loading}
+                  disabled={syncing || loading || pending.size > 0}
                 >
                   <span className={syncing ? "spin icon-wrap" : "icon-wrap"}>
                     <RefreshCw size={16} />
@@ -396,128 +408,14 @@ export function Workspace({
               </div>
             ) : (
               <>
-                <section className="kanban" aria-label="Repository 看板">
-                  {statuses.map((status) => (
-                    <section
-                      key={status}
-                      className={`column ${dragging ? "can-drop" : ""}`}
-                      aria-label={labels[status]}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = "move";
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const id = e.dataTransfer.getData("text/plain");
-                        setDragging(null);
-                        const card = cards.find((c) => c.repoId === id);
-                        if (card && card.status !== status)
-                          void save(card, { status }).catch(() => {});
-                      }}
-                    >
-                      <div className="column-header">
-                        <div>
-                          <i className={`status-dot ${status}`} />
-                          <h2>{labels[status]}</h2>
-                          <span>
-                            {filtered.filter((c) => c.status === status).length}
-                          </span>
-                        </div>
-                        {status === "archive" ? <Archive size={15} /> : null}
-                      </div>
-                      <p className="column-caption">{descriptions[status]}</p>
-                      <div className="card-stack">
-                        {filtered
-                          .filter((c) => c.status === status)
-                          .map((card) => (
-                            <article
-                              key={card.repoId}
-                              className={`repo-card ${dragging === card.repoId ? "dragging" : ""} ${busy === card.repoId ? "saving" : ""}`}
-                              draggable={!busy}
-                              onDragStart={(e) => {
-                                setDragging(card.repoId);
-                                e.dataTransfer.setData(
-                                  "text/plain",
-                                  card.repoId,
-                                );
-                                e.dataTransfer.effectAllowed = "move";
-                              }}
-                              onDragEnd={() => setDragging(null)}
-                            >
-                              <button
-                                type="button"
-                                className="card-open"
-                                onClick={() => setSelected(card.repoId)}
-                                aria-label={`開啟 ${card.fullName}`}
-                              >
-                                <div className="card-owner">
-                                  {card.fullName.split("/")[0]}
-                                  {card.isPrivate ? (
-                                    <Lock size={12} aria-label="Private" />
-                                  ) : (
-                                    <Github size={13} />
-                                  )}
-                                </div>
-                                <h3>{card.name}</h3>
-                                <p>
-                                  {card.description || "尚未提供 repo 描述"}
-                                </p>
-                                {card.notes ? (
-                                  <div className="card-note">
-                                    <MessageSquare size={13} />
-                                    <span>{card.notes}</span>
-                                  </div>
-                                ) : null}
-                                <div className="card-meta">
-                                  <span>
-                                    <i />
-                                    {card.language ?? "未分類"}
-                                  </span>
-                                  <span className="card-source">
-                                    {card.source === "auto"
-                                      ? "建議分類"
-                                      : "已整理"}
-                                  </span>
-                                </div>
-                              </button>
-                              <div className="card-status">
-                                <select
-                                  aria-label={`${card.name} 的狀態`}
-                                  value={card.status}
-                                  disabled={Boolean(busy)}
-                                  onChange={(e) => {
-                                    const value = statuses.find(
-                                      (s) => s === e.target.value,
-                                    );
-                                    if (value)
-                                      void save(card, { status: value }).catch(
-                                        () => {},
-                                      );
-                                  }}
-                                >
-                                  {statuses.map((s) => (
-                                    <option key={s} value={s}>
-                                      {labels[s]}
-                                    </option>
-                                  ))}
-                                </select>
-                                <span title={card.reason}>ⓘ</span>
-                              </div>
-                            </article>
-                          ))}
-                        {filtered.every((c) => c.status !== status) ? (
-                          <div className="empty-column">
-                            {search ||
-                            visibility !== "all" ||
-                            language !== "all"
-                              ? "沒有符合的 repo"
-                              : "還沒有 repo"}
-                          </div>
-                        ) : null}
-                      </div>
-                    </section>
-                  ))}
-                </section>
+                <KanbanBoard
+                  cards={cards}
+                  visibleIds={new Set(filtered.map((card) => card.repoId))}
+                  pending={pending}
+                  disabled={syncing}
+                  onOpen={setSelected}
+                  onSave={save}
+                />
                 <footer className="board-footer">
                   <span>
                     {filtered.length} / {cards.length} repositories
@@ -559,7 +457,7 @@ export function Workspace({
           key={selectedCard.repoId}
           card={selectedCard}
           demo={demo}
-          saving={busy === selectedCard.repoId}
+          saving={pending.has(selectedCard.repoId)}
           onClose={() => setSelected(null)}
           onSave={(changes) => save(selectedCard, changes)}
         />

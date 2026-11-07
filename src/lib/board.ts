@@ -115,7 +115,7 @@ export async function syncBoard(userId: string) {
 export async function updateCard(
   userId: string,
   repoId: string,
-  edit: { version: number; status?: Status; notes?: string },
+  edit: { version: number; status?: Status; notes?: string; position?: number },
   agent: boolean,
 ) {
   // Re-check live GitHub access, even for a valid agent token.
@@ -136,9 +136,10 @@ export async function updateCard(
       );
     const status = edit.status ?? row.status;
     const notes = edit.notes ?? row.notes;
+    const position = edit.position ?? row.position;
     const result = await client.query<Row>(
-      `UPDATE board_cards SET status=$3,notes=$4,source='manual',reason='手動設定',version=version+1,updated_at=now() WHERE user_id=$1 AND repo_id=$2 RETURNING repo_id,full_name,metadata,status,notes,reason,source,position,version,updated_at`,
-      [userId, repoId, status, notes],
+      `UPDATE board_cards SET status=$3,notes=$4,position=$5,source='manual',reason='手動設定',version=version+1,updated_at=now() WHERE user_id=$1 AND repo_id=$2 RETURNING repo_id,full_name,metadata,status,notes,reason,source,position,version,updated_at`,
+      [userId, repoId, status, notes, position],
     );
     await client.query(
       "INSERT INTO board_activity(user_id,repo_id,actor,old_status,new_status,notes_changed) VALUES($1,$2,$3,$4,$5,$6)",

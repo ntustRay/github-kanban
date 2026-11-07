@@ -8,7 +8,10 @@ export const metadata: Metadata = {
 };
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="zh-Hant">
+    <html lang="zh-Hant" suppressHydrationWarning>
+      <head>
+        <script>{`try{document.documentElement.dataset.theme=localStorage.getItem('github-kanban:theme')==='dark'?'dark':'light'}catch{}`}</script>
+      </head>
       <body>{children}</body>
     </html>
   );

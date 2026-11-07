@@ -6,11 +6,14 @@
 
 ## 功能
 
-- `Backlog → In progress → Verify → Formal → Archive` 五欄看板。
+- `Legacy / Backlog / In progress / Verify / Formal / Archive` 六欄看板；最左側 Legacy 預設收合。
+- 黑色 / 淺色主題切換，自動記住偏好。
+- 卡片拖曳即時預覽、排序位移與放下動畫；支援滑鼠、觸控與鍵盤，遵循 reduced motion 設定。
+- 使用卡片上方拖曳把手移動；鍵盤按 Space 拿起、方向鍵移動、Space 放下、Esc 取消。
 - 列出 GitHub App 可存取的所有 repositories，包含分頁與授權的 private repos。
 - 拖曳或下拉選單修改狀態，搜尋 repo、描述與備註，依語言和可見範圍篩選。
 - 開啟卡片優先閱讀 `TODO.md`、`README.md`、`AGENTS.md`；搜尋根目錄、`docs/`、`.github/`，支援大小寫。
-- 獨立儲存每人的狀態與備註；同步保留手動修改。
+- 獨立儲存每人的狀態、備註與欄內排序；同步保留手動修改，儲存失敗還原卡片。
 - Agent read / write token、90 天有效期、即時撤銷、OpenAPI、`llms.txt`、JSON 匯出。
 - 版本衝突回傳 `409`，修改紀錄區分 human / agent。
 - `/demo` 可試用，不會讀取或儲存真實 repo 資料。
@@ -69,7 +72,7 @@ Production 與 Preview 使用不同 Neon branches。勿把 production credential
 | 較久未 push，但有網站連結 | Verify      |
 | 其他                      | Backlog     |
 
-Formal 需人確認。較久沒更新不能直接推定已封存。可在資料庫為特定 GitHub 帳號設定初始建議；設定只在新卡片第一次同步時使用。
+Legacy 由使用者將舊專案移入；不會自動搬動既有卡片。Formal 需人確認。較久沒更新不能直接推定已封存。可在資料庫為特定 GitHub 帳號設定初始建議；設定只在新卡片第一次同步時使用。
 
 ## Agent API
 
@@ -90,18 +93,20 @@ Content-Type: application/json
 {"status":"verify","notes":"Unit tests 通過，等待驗收","version":0}
 ```
 
+PATCH 也可提供 `position`（-1e12 到 1e12 的有限數值）；欄內依 position、fullName 遞增排序。插入兩張卡片之間時使用位置中點。
+
 遇到 `409` 重新讀取卡片並合併修改。Agent token 不能建立其他 token，不能修改 repo。
 
 ## 技術與資料
 
-Next.js App Router、React、TypeScript、Bun、Biome、Better Auth、node-postgres、Neon、Vercel。
+Next.js App Router、React、dnd-kit、TypeScript、Bun、Biome、Better Auth、node-postgres、Neon、Vercel。
 每筆看板資料以 `(user_id, repo_id)` 分開儲存。所有讀寫由 server 驗證使用者。
 OAuth token 加密儲存；browser session cookie 為 HttpOnly；browser 寫入檢查同源。
 不保存完整 repo 程式碼，文件按需從 GitHub 讀取。Markdown 不執行 HTML，不自動下載外部圖片。
 
 ## 驗證
 
-- TypeScript、Biome、15 項 unit tests 與 Vercel build 通過。
+- TypeScript、Biome、21 項 unit tests 與 Vercel build 通過。
 - 獨立 Neon branch 驗證使用者資料隔離、token 權限與撤銷、版本衝突、修改紀錄及同步保留手動內容。
 - 正式站驗證 GitHub 登入、登出、重新登入、public / private repos 同步及私人 README 預覽。
 - 正式站驗證 TODO / README / AGENTS 預覽、狀態與備註儲存，重新登入後內容仍保留。

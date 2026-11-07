@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const statuses = [
+  "legacy",
   "backlog",
   "in_progress",
   "verify",
@@ -9,6 +10,7 @@ export const statuses = [
 ] as const;
 export type Status = (typeof statuses)[number];
 export const labels: Record<Status, string> = {
+  legacy: "Legacy",
   backlog: "Backlog",
   in_progress: "In progress",
   verify: "Verify",
@@ -16,6 +18,7 @@ export const labels: Record<Status, string> = {
   archive: "Archive",
 };
 export const descriptions: Record<Status, string> = {
+  legacy: "舊專案，暫不維護",
   backlog: "待開始",
   in_progress: "開發中",
   verify: "待驗證",
@@ -70,12 +73,16 @@ export const editSchema = z
   .object({
     status: z.enum(statuses).optional(),
     notes: z.string().max(20000).optional(),
+    position: z.number().min(-1e12).max(1e12).optional(),
     version: z.number().int().min(0),
   })
   .strict()
   .refine(
-    (v) => v.status !== undefined || v.notes !== undefined,
-    "至少提供狀態或備註",
+    (v) =>
+      v.status !== undefined ||
+      v.notes !== undefined ||
+      v.position !== undefined,
+    "至少提供狀態、備註或排序位置",
   );
 
 export function classify(
