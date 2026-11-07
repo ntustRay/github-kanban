@@ -1,0 +1,268 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GitHub Kanban API",
+    "version": "1.0.0",
+    "description": "Personal board API. GitHub repositories are read-only. All operations use the token owner’s workspace."
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Create a personal agent token in Agent access. Read or write scope, 90-day expiry."
+      }
+    },
+    "schemas": {
+      "Status": {
+        "type": "string",
+        "enum": ["backlog", "in_progress", "verify", "formal", "archive"]
+      },
+      "Edit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["version"],
+        "anyOf": [
+          {
+            "required": ["status"]
+          },
+          {
+            "required": ["notes"]
+          }
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 20000
+          }
+        }
+      },
+      "Card": {
+        "type": "object",
+        "properties": {
+          "repoId": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "source": {
+            "enum": ["auto", "manual"]
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/board": {
+      "get": {
+        "operationId": "readBoard",
+        "summary": "List the token owner’s repository cards",
+        "responses": {
+          "200": {
+            "description": "All visible cards",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cards": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Card"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, revoked or expired credentials"
+          },
+          "403": {
+            "description": "Read-only token or invalid browser origin"
+          },
+          "429": {
+            "description": "GitHub or synchronization rate limit"
+          },
+          "500": {
+            "description": "Service unavailable"
+          }
+        }
+      },
+      "post": {
+        "operationId": "syncBoard",
+        "summary": "Sync all accessible GitHub repositories (write scope, once per minute)",
+        "responses": {
+          "200": {
+            "description": "Synced cards; manual notes and statuses preserved"
+          },
+          "401": {
+            "description": "Missing, revoked or expired credentials"
+          },
+          "403": {
+            "description": "Read-only token or invalid browser origin"
+          },
+          "429": {
+            "description": "GitHub or synchronization rate limit"
+          },
+          "500": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/api/board/{repoId}": {
+      "patch": {
+        "operationId": "updateCard",
+        "summary": "Update status or notes, with a version check (write scope)",
+        "parameters": [
+          {
+            "name": "repoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Edit"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated card with incremented version"
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Missing, revoked or expired credentials"
+          },
+          "403": {
+            "description": "Read-only token or invalid browser origin"
+          },
+          "404": {
+            "description": "Repository missing or access revoked"
+          },
+          "409": {
+            "description": "Version conflict; refetch and merge before retrying"
+          },
+          "429": {
+            "description": "GitHub or synchronization rate limit"
+          },
+          "500": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/api/board/{repoId}/documents": {
+      "get": {
+        "operationId": "readRepositoryDocuments",
+        "summary": "Read TODO.md, README.md, AGENTS.md in priority order",
+        "parameters": [
+          {
+            "name": "repoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result for the owner’s repository"
+          },
+          "401": {
+            "description": "Missing, revoked or expired credentials"
+          },
+          "403": {
+            "description": "Read-only token or invalid browser origin"
+          },
+          "404": {
+            "description": "Repository missing or inaccessible"
+          },
+          "429": {
+            "description": "GitHub or synchronization rate limit"
+          },
+          "500": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    },
+    "/api/board/{repoId}/activity": {
+      "get": {
+        "operationId": "readCardActivity",
+        "summary": "Read the latest 30 status and note changes",
+        "parameters": [
+          {
+            "name": "repoId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Result for the owner’s repository"
+          },
+          "401": {
+            "description": "Missing, revoked or expired credentials"
+          },
+          "403": {
+            "description": "Read-only token or invalid browser origin"
+          },
+          "404": {
+            "description": "Repository missing or inaccessible"
+          },
+          "429": {
+            "description": "GitHub or synchronization rate limit"
+          },
+          "500": {
+            "description": "Service unavailable"
+          }
+        }
+      }
+    }
+  }
+}

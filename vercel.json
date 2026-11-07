@@ -1,0 +1,5 @@
+{
+  "regions": ["sin1"],
+  "buildCommand": "bun run check && bun test && bun run build",
+  "installCommand": "bun install --frozen-lockfile"
+}
