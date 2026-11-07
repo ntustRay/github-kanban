@@ -1,5 +1,7 @@
 # GitHub Kanban
 
+[開啟看板](https://github-kanban-ntustray.vercel.app/) · [試用示範](https://github-kanban-ntustray.vercel.app/demo) · [GitHub App](https://github.com/apps/mingray-repo-kanban)
+
 以 GitHub repository 為卡片的個人看板。只用 GitHub 登入；原始碼、Issue 與 repo 文件維持唯讀。
 
 ## 功能
@@ -28,6 +30,8 @@ bun run build
 ```
 
 ## GitHub App
+
+正式站使用 **MingRay Repo Kanban**，App slug 為 `mingray-repo-kanban`。GitHub 不允許 App 名稱以 GitHub 開頭；網站名稱維持 GitHub Kanban。
 
 建立可供任何帳號安裝的 public GitHub App。設定：
 
@@ -94,6 +98,13 @@ Next.js App Router、React、TypeScript、Bun、Biome、Better Auth、node-postg
 每筆看板資料以 `(user_id, repo_id)` 分開儲存。所有讀寫由 server 驗證使用者。
 OAuth token 加密儲存；browser session cookie 為 HttpOnly；browser 寫入檢查同源。
 不保存完整 repo 程式碼，文件按需從 GitHub 讀取。Markdown 不執行 HTML，不自動下載外部圖片。
+
+## 驗證
+
+- TypeScript、Biome、15 項 unit tests 與 Vercel build 通過。
+- 獨立 Neon branch 驗證使用者資料隔離、token 權限與撤銷、版本衝突、修改紀錄及同步保留手動內容。
+- 正式站驗證 GitHub 登入、登出、重新登入、public / private repos 同步及私人 README 預覽。
+- 正式站驗證 TODO / README / AGENTS 預覽、狀態與備註儲存，重新登入後內容仍保留。
 
 ## 限制
 

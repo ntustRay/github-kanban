@@ -2,6 +2,22 @@ import type { NextConfig } from "next";
 
 const config: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "github-kanban-rho.vercel.app" }],
+        destination: "https://github-kanban-ntustray.vercel.app/:path*",
+        permanent: true,
+      },
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "github-kanban-r1-541a.vercel.app" }],
+        destination: "https://github-kanban-ntustray.vercel.app/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

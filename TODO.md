@@ -8,5 +8,5 @@
 - [x] Scoped agent tokens, OpenAPI, llms.txt
 - [x] Version conflict checks and edit history
 - [x] Demonstration workspace
-- [ ] Verify live GitHub App authorization and repository installation
-- [ ] Verify production sign-in, sign-out, session restore, and private repositories
+- [x] Verify live GitHub App authorization and repository installation
+- [x] Verify production sign-in, sign-out, session restore, and private repositories
