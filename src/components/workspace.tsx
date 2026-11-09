@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { authClient } from "@/lib/auth-client";
+import { SignOutButton } from "@ntustray/web-authentication-component/react";
 import { demoCards } from "@/lib/demo";
 import { jsonRequest } from "@/lib/http-client";
 import { type Card, type Status, statuses } from "@/lib/model";
@@ -253,16 +253,10 @@ export function Workspace({
               登入自己的 GitHub
             </a>
           ) : (
-            <button
-              type="button"
-              onClick={async () => {
-                await authClient.signOut();
-                location.assign("/");
-              }}
-            >
+            <SignOutButton>
               <LogOut size={16} />
               登出
-            </button>
+            </SignOutButton>
           )}
         </div>
       </aside>

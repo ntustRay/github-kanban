@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@ntustray/web-authentication-component/styles.css";
+import { SharedAuth } from "@/components/shared-auth";
 export const metadata: Metadata = {
   title: "GitHub Kanban",
   description:
@@ -12,7 +14,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <script>{`try{document.documentElement.dataset.theme=localStorage.getItem('github-kanban:theme')==='dark'?'dark':'light'}catch{}`}</script>
       </head>
-      <body>{children}</body>
+      <body><SharedAuth>{children}</SharedAuth></body>
     </html>
   );
 }

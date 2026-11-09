@@ -25,3 +25,7 @@ Use Biome for formatting. Markdown is UTF-8.
 
 See `public/llms.txt` and `public/openapi.json`. API tokens only manage the board.
 Do not put operational tasks or secrets into this file.
+
+## Shared authentication
+
+Use @ntustray/web-authentication-component for login state, UI and adapters. Keep GitHub-only configuration and existing server authorization. Fix shared behavior in the package and update its dependency here.

@@ -1,8 +1,6 @@
 "use client";
 import { ArrowRight, FileText, Kanban, Lock, Terminal } from "lucide-react";
-import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
-import { Github } from "./github-icon";
+import { AuthPanel } from "@ntustray/web-authentication-component/react";
 import { ThemeToggle } from "./theme-toggle";
 export function Login({
   configured,
@@ -11,28 +9,6 @@ export function Login({
   configured: boolean;
   failed?: boolean;
 }) {
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState(
-    failed ? "GitHub 登入未完成，請重新嘗試。" : "",
-  );
-  async function signIn() {
-    setPending(true);
-    setError("");
-    try {
-      const result = await authClient.signIn.social({
-        provider: "github",
-        callbackURL: "/",
-        errorCallbackURL: "/?auth_error=1",
-      });
-      if (result.error) {
-        setError("GitHub 登入失敗，請重新嘗試。");
-        setPending(false);
-      }
-    } catch {
-      setError("無法連接 GitHub，請稍後重試。");
-      setPending(false);
-    }
-  }
   return (
     <main className="login-page">
       <header className="login-header">
@@ -63,25 +39,11 @@ export function Login({
             <br />
             看文件、記備註，和你的 AI Agent 一起推進。
           </p>
-          <button
-            type="button"
-            className="primary login-button"
-            onClick={signIn}
-            disabled={pending || !configured}
-          >
-            <Github size={20} />
-            {pending ? "正在前往 GitHub…" : "使用 GitHub 登入"}
-            <ArrowRight size={18} />
-          </button>
+          <AuthPanel disabled={!configured} notice={failed ? { tone: "error", message: "GitHub 登入未完成，請重新嘗試。" } : undefined} />
           <p className="small">只支援 GitHub 帳號。Repo 內容唯讀。</p>
           {!configured ? (
             <p role="status" className="notice">
               GitHub 登入設定中。可以先試用看板。
-            </p>
-          ) : null}
-          {error ? (
-            <p role="alert" className="error">
-              {error}
             </p>
           ) : null}
           <div className="login-features">

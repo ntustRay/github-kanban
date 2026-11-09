@@ -1,3 +1,4 @@
+import { AccountBoundary } from "@/components/shared-auth";
 import { headers } from "next/headers";
 import { Login } from "@/components/login";
 import { Workspace } from "@/components/workspace";
@@ -10,9 +11,9 @@ export default async function Home({
 }) {
   const session = await auth.api.getSession({ headers: await headers() });
   return session ? (
-    <Workspace
+    <AccountBoundary userId={session.user.id}><Workspace
       user={{ name: session.user.name, image: session.user.image ?? null }}
-    />
+    /></AccountBoundary>
   ) : (
     <Login
       configured={Boolean(process.env.GITHUB_CLIENT_ID)}
