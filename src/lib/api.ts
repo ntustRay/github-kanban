@@ -1,15 +1,10 @@
 import { createHash } from "node:crypto";
 import { auth } from "./auth";
 import { pool } from "./db";
+import { HttpError } from "./http-error";
 
-export class HttpError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+export { HttpError } from "./http-error";
+
 export function fail(error: unknown) {
   if (error instanceof HttpError)
     return Response.json({ error: error.message }, { status: error.status });
