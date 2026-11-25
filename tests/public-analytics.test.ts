@@ -8,11 +8,13 @@ const script = readFileSync(
 );
 const production = "https://github-kanban-ntustray.vercel.app";
 
-function visit(url: string, doNotTrack = "0") {
+function visit(url: string, doNotTrack = "0", referrer = "") {
   const dataLayer: unknown[][] = [];
   const tags: { src: string }[] = [];
   runInNewContext(script, {
+    URL,
     document: {
+      referrer,
       currentScript: { dataset: { measurementId: "G-EXAMPLE123" } },
       createElement: () => ({}),
       head: { appendChild: (tag: { src: string }) => tags.push(tag) },
@@ -24,8 +26,8 @@ function visit(url: string, doNotTrack = "0") {
   return { dataLayer, tags };
 }
 
-test("sends one public page view without query, fragment, or referrer", () => {
-  const { dataLayer, tags } = visit(production + "/demo?token=private#note");
+test("sends one public page view from a clean URL", () => {
+  const { dataLayer, tags } = visit(production + "/demo");
   expect(tags).toHaveLength(1);
   expect(dataLayer).toHaveLength(2);
   expect(Array.from(dataLayer[1])).toEqual([
@@ -45,4 +47,18 @@ test("skips previews, private paths and Do Not Track", () => {
   expect(visit("https://preview.vercel.app/demo").tags).toHaveLength(0);
   expect(visit(production + "/api/auth/callback/github").tags).toHaveLength(0);
   expect(visit(production + "/demo", "1").tags).toHaveLength(0);
+});
+
+test("never loads the tag when the URL or referrer includes a query or fragment", () => {
+  expect(visit(production + "/demo?token=example").tags).toHaveLength(0);
+  expect(visit(production + "/demo#example").tags).toHaveLength(0);
+  expect(visit(production, "0", "https://example.org/?key=x").tags).toHaveLength(0);
+  expect(visit(production, "0", "https://example.org/#x").tags).toHaveLength(0);
+});
+
+test("keeps only the origin of a clean referrer", () => {
+  const { dataLayer } = visit(production, "0", "https://example.org/private/note");
+  expect(Array.from(dataLayer[1])[2]).toMatchObject({
+    page_referrer: "https://example.org",
+  });
 });
