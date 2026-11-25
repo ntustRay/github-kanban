@@ -1,4 +1,10 @@
+import { PublicAnalytics } from "@/components/public-analytics";
 import { Workspace } from "@/components/workspace";
 export default function Demo() {
-  return <Workspace user={{ name: "Demo workspace", image: null }} demo />;
+  return (
+    <>
+      <PublicAnalytics />
+      <Workspace user={{ name: "Demo workspace", image: null }} demo />
+    </>
+  );
 }
