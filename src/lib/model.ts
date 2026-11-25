@@ -69,6 +69,17 @@ export type Document = {
   content: string | null;
   error: string | null;
 };
+export function documentTabName(
+  documents: Document[],
+  selectedName: string | null,
+): string {
+  return (
+    selectedName ??
+    documents.find((document) => document.content !== null)?.name ??
+    "TODO.md"
+  );
+}
+
 export const editSchema = z
   .object({
     status: z.enum(statuses).optional(),

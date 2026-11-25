@@ -1,15 +1,15 @@
 import { z } from "zod";
-import { HttpError } from "./api";
-import { auth } from "./auth";
-import { pool } from "./db";
+import { HttpError } from "./http-error";
 import { type Document, githubRepoSchema, type Repository } from "./model";
 
 export async function githubToken(userId: string) {
+  const { pool } = await import("./db");
   const { rows } = await pool.query<{ id: string }>(
     'SELECT id FROM account WHERE "userId"=$1 AND "providerId"=\'github\'',
     [userId],
   );
   if (!rows[0]) throw new HttpError(401, "請重新使用 GitHub 登入");
+  const { auth } = await import("./auth");
   const token = await auth.api.getAccessToken({
     body: { accountId: rows[0].id, userId },
   });

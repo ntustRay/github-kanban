@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { classify, editSchema, type Repository } from "../src/lib/model";
+import {
+  classify,
+  type Document,
+  documentTabName,
+  editSchema,
+  type Repository,
+} from "../src/lib/model";
 
 const repo: Repository = {
   id: 1,
@@ -62,5 +68,36 @@ describe("write contract", () => {
     expect(
       editSchema.safeParse({ notes: "x".repeat(20001), version: 1 }).success,
     ).toBe(false);
+  });
+});
+
+describe("document tab selection", () => {
+  const readme: Document = {
+    name: "README.md",
+    path: "README.md",
+    content: "# Example",
+    error: null,
+  };
+  const missingTodo: Document = {
+    name: "TODO.md",
+    path: null,
+    content: null,
+    error: "Missing",
+  };
+
+  test("selects the first readable document without an explicit choice", () => {
+    expect(documentTabName([], null)).toBe("TODO.md");
+    expect(documentTabName([missingTodo, readme], null)).toBe("README.md");
+  });
+
+  test("preserves the selected tab when documents load or refresh", () => {
+    const agents: Document = { ...readme, name: "AGENTS.md", path: "AGENTS.md" };
+    const selected = "AGENTS.md";
+
+    expect(documentTabName([], selected)).toBe(selected);
+    expect(documentTabName([missingTodo, readme, agents], selected)).toBe(
+      selected,
+    );
+    expect(documentTabName([missingTodo, readme], selected)).toBe(selected);
   });
 });

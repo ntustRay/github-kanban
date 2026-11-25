@@ -17,6 +17,7 @@ import { jsonRequest } from "@/lib/http-client";
 import {
   type Card,
   type Document,
+  documentTabName,
   labels,
   type Status,
   statuses,
@@ -50,7 +51,7 @@ export function Detail({
   );
   const [loading, setLoading] = useState(!demo);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState("TODO.md");
+  const [selectedTab, setSelectedTab] = useState<string | null>(null);
   const [notes, setNotes] = useState(card.notes);
   const [status, setStatus] = useState<Status>(card.status);
   const [saved, setSaved] = useState(false);
@@ -77,8 +78,6 @@ export function Detail({
           .object({ documents: z.array(documentSchema) })
           .parse(data).documents;
         setDocuments(docs);
-        const first = docs.find((d) => d.content !== null);
-        if (first) setTab(first.name);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
@@ -89,6 +88,7 @@ export function Detail({
       });
     return () => controller.abort();
   }, [card.repoId, demo, retry]);
+  const tab = documentTabName(documents, selectedTab);
   const active = documents.find((d) => d.name === tab);
   async function save() {
     setSaved(false);
@@ -167,7 +167,7 @@ export function Detail({
                 id={`tab-${name}`}
                 aria-selected={tab === name}
                 aria-controls="document-panel"
-                onClick={() => setTab(name)}
+                onClick={() => setSelectedTab(name)}
               >
                 {name}
                 {documents.find((d) => d.name === name)?.content !== null &&
