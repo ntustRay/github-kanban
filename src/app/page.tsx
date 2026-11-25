@@ -1,6 +1,7 @@
 import { AccountBoundary } from "@/components/shared-auth";
 import { headers } from "next/headers";
 import { Login } from "@/components/login";
+import { PublicAnalytics } from "@/components/public-analytics";
 import { Workspace } from "@/components/workspace";
 import { auth } from "@/lib/auth";
 export const dynamic = "force-dynamic";
@@ -15,9 +16,12 @@ export default async function Home({
       user={{ name: session.user.name, image: session.user.image ?? null }}
     /></AccountBoundary>
   ) : (
-    <Login
-      configured={Boolean(process.env.GITHUB_CLIENT_ID)}
-      failed={Boolean((await searchParams).auth_error)}
-    />
+    <>
+      <PublicAnalytics />
+      <Login
+        configured={Boolean(process.env.GITHUB_CLIENT_ID)}
+        failed={Boolean((await searchParams).auth_error)}
+      />
+    </>
   );
 }
