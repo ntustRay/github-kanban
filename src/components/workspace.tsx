@@ -1,4 +1,5 @@
 "use client";
+import { SignOutButton } from "@ntustray/web-authentication-component/react";
 import {
   ArrowLeft,
   BookOpen,
@@ -10,13 +11,14 @@ import {
   LayoutGrid,
   Lock,
   LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Search,
   Terminal,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { z } from "zod";
-import { SignOutButton } from "@ntustray/web-authentication-component/react";
 import { demoCards } from "@/lib/demo";
 import { jsonRequest } from "@/lib/http-client";
 import { type Card, type Status, statuses } from "@/lib/model";
@@ -44,6 +46,13 @@ const cardSchema = z.object({
   pushedAt: z.string().nullable(),
   updatedAt: z.string(),
 });
+
+function toggleCollapsed<T>(items: Set<T>, item: T) {
+  const next = new Set(items);
+  if (!next.delete(item)) next.add(item);
+  return next;
+}
+
 export function Workspace({
   user,
   demo = false,
@@ -60,6 +69,11 @@ export function Workspace({
   const [visibility, setVisibility] = useState("all");
   const [language, setLanguage] = useState("all");
   const [view, setView] = useState<"board" | "agents">("board");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [collapsedColumns, setCollapsedColumns] = useState(
+    () => new Set<Status>(["legacy"]),
+  );
+  const [collapsedCards, setCollapsedCards] = useState(() => new Set<string>());
   const [selected, setSelected] = useState<string | null>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
   const pendingRef = useRef(new Set<string>());
@@ -197,12 +211,28 @@ export function Workspace({
     URL.revokeObjectURL(url);
   }
   return (
-    <div className="workspace">
-      <aside className="sidebar">
-        <a className="brand" href="/">
-          <Kanban size={23} />
-          <span>GitHub Kanban</span>
-        </a>
+    <div className={`workspace${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
+      <aside className="sidebar" id="workspace-sidebar">
+        <div className="sidebar-heading">
+          <a className="brand" href="/" aria-label="GitHub Kanban 首頁">
+            <Kanban size={23} />
+            <span>GitHub Kanban</span>
+          </a>
+          <button
+            type="button"
+            className="icon-button sidebar-toggle"
+            aria-label={sidebarCollapsed ? "展開側欄" : "收合側欄"}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="workspace-sidebar"
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={20} />
+            ) : (
+              <PanelLeftClose size={20} />
+            )}
+          </button>
+        </div>
         <div className="workspace-account">
           <span className="avatar">{user.name.slice(0, 1).toUpperCase()}</span>
           <div>
@@ -214,18 +244,21 @@ export function Workspace({
           <button
             type="button"
             className={view === "board" ? "nav-item active" : "nav-item"}
+            aria-label={`Repositories，${cards.length} 個 repo`}
             onClick={() => setView("board")}
           >
             <LayoutGrid size={18} />
-            Repositories<span>{cards.length}</span>
+            <span className="nav-label">Repositories</span>
+            <span className="nav-count">{cards.length}</span>
           </button>
           <button
             type="button"
             className={view === "agents" ? "nav-item active" : "nav-item"}
+            aria-label="Agent access"
             onClick={() => setView("agents")}
           >
             <Terminal size={18} />
-            Agent access
+            <span className="nav-label">Agent access</span>
           </button>
         </nav>
         <div className="sidebar-note">
@@ -242,20 +275,21 @@ export function Workspace({
             href="https://github.com/ntustRay/github-kanban#readme"
             target="_blank"
             rel="noreferrer"
+            aria-label="使用說明"
           >
             <BookOpen size={16} />
-            使用說明
-            <ExternalLink size={13} />
+            <span className="sidebar-action-label">使用說明</span>
+            <ExternalLink className="sidebar-external-icon" size={13} />
           </a>
           {demo ? (
-            <a href="/">
+            <a href="/" aria-label="登入自己的 GitHub">
               <ArrowLeft size={16} />
-              登入自己的 GitHub
+              <span className="sidebar-action-label">登入自己的 GitHub</span>
             </a>
           ) : (
-            <SignOutButton>
+            <SignOutButton aria-label="登出">
               <LogOut size={16} />
-              登出
+              <span className="sidebar-action-label">登出</span>
             </SignOutButton>
           )}
         </div>
@@ -407,6 +441,18 @@ export function Workspace({
                   visibleIds={new Set(filtered.map((card) => card.repoId))}
                   pending={pending}
                   disabled={syncing}
+                  collapsedColumns={collapsedColumns}
+                  collapsedCards={collapsedCards}
+                  onToggleColumn={(status) => {
+                    setCollapsedColumns((current) =>
+                      toggleCollapsed(current, status),
+                    );
+                  }}
+                  onToggleCard={(id) => {
+                    setCollapsedCards((current) =>
+                      toggleCollapsed(current, id),
+                    );
+                  }}
                   onOpen={setSelected}
                   onSave={save}
                 />

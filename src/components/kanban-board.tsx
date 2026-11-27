@@ -17,20 +17,18 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  Archive,
-  ChevronLeft,
+  ChevronDown,
   ChevronRight,
   GripVertical,
   Lock,
   MessageSquare,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { compareCards, placeCard } from "@/lib/card-order";
 import {
   type Card,
@@ -47,16 +45,13 @@ type Props = {
   visibleIds: Set<string>;
   pending: Set<string>;
   disabled: boolean;
+  collapsedColumns: ReadonlySet<Status>;
+  collapsedCards: ReadonlySet<string>;
+  onToggleColumn: (status: Status) => void;
+  onToggleCard: (id: string) => void;
   onOpen: (id: string) => void;
   onSave: (card: Card, changes: Changes) => Promise<Card>;
 };
-const collision: CollisionDetection = (args) => {
-  const hits = pointerWithin(args);
-  const cards = hits.filter((hit) => !String(hit.id).startsWith("column:"));
-  if (args.pointerCoordinates) return cards.length ? cards : hits;
-  return closestCenter(args);
-};
-
 function CardContent({ card, onOpen }: { card: Card; onOpen?: () => void }) {
   return (
     <button
@@ -66,23 +61,24 @@ function CardContent({ card, onOpen }: { card: Card; onOpen?: () => void }) {
       tabIndex={onOpen ? 0 : -1}
       aria-label={`開啟 ${card.fullName}`}
     >
-      <div className="card-owner">
+      <span className="card-owner">
         {card.fullName.split("/")[0]}
         {card.isPrivate ? (
           <Lock size={12} aria-label="Private" />
         ) : (
           <Github size={13} />
         )}
-      </div>
-      <h3>{card.name}</h3>
-      <p>{card.description || "尚未提供 repo 描述"}</p>
+      </span>
+      <span className="card-description">
+        {card.description || "尚未提供 repo 描述"}
+      </span>
       {card.notes ? (
-        <div className="card-note">
+        <span className="card-note">
           <MessageSquare size={13} />
           <span>{card.notes}</span>
-        </div>
+        </span>
       ) : null}
-      <div className="card-meta">
+      <span className="card-meta">
         <span>
           <i />
           {card.language ?? "未分類"}
@@ -90,7 +86,8 @@ function CardContent({ card, onOpen }: { card: Card; onOpen?: () => void }) {
         <span className="card-source">
           {card.source === "auto" ? "建議分類" : "已整理"}
         </span>
-      </div>
+      </span>
+      <span className="card-details-label">查看詳情</span>
     </button>
   );
 }
@@ -98,17 +95,22 @@ function SortableCard({
   card,
   pending,
   disabled,
+  collapsed,
   reducedMotion,
   onOpen,
   onSave,
+  onToggle,
 }: {
   card: Card;
   pending: boolean;
   disabled: boolean;
+  collapsed: boolean;
   reducedMotion: boolean;
   onOpen: () => void;
   onSave: (status: Status) => void;
+  onToggle: () => void;
 }) {
+  const bodyId = useId();
   const {
     attributes,
     listeners,
@@ -127,40 +129,56 @@ function SortableCard({
   return (
     <article
       ref={setNodeRef}
-      className={`repo-card ${isDragging ? "dragging" : ""} ${pending ? "saving" : ""}`}
+      className={`repo-card ${isDragging ? "dragging" : ""} ${pending ? "saving" : ""} ${collapsed ? "collapsed" : ""}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        className="drag-handle"
-        {...attributes}
-        {...listeners}
-        disabled={pending || disabled}
-        aria-label={`拖曳 ${card.fullName}`}
-        title="拖曳排序；鍵盤按空白鍵拿起，方向鍵移動，空白鍵放下，Esc 取消"
-      >
-        <GripVertical size={15} />
-        <span>{pending ? "儲存中…" : "拖曳移動"}</span>
-      </button>
-      <CardContent card={card} onOpen={onOpen} />
-      <div className="card-status">
-        <select
-          aria-label={`${card.name} 的狀態`}
-          value={card.status}
-          disabled={pending || disabled}
-          onChange={(e) => {
-            const status = statuses.find((item) => item === e.target.value);
-            if (status && status !== card.status) onSave(status);
-          }}
+      <div className="card-top">
+        <h3>
+          <button
+            type="button"
+            ref={setActivatorNodeRef}
+            className="drag-handle"
+            {...attributes}
+            {...listeners}
+            disabled={pending || disabled}
+            aria-label={`拖曳 ${card.fullName}`}
+            title={pending ? "儲存中…" : "拖曳移動卡片"}
+          >
+            <GripVertical size={18} />
+            <span className="card-title">{card.name}</span>
+          </button>
+        </h3>
+        <button
+          type="button"
+          className="icon-button card-toggle"
+          aria-label={`${collapsed ? "展開" : "收合"} ${card.fullName}`}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
+          onClick={onToggle}
         >
-          {statuses.map((status) => (
-            <option key={status} value={status}>
-              {labels[status]}
-            </option>
-          ))}
-        </select>
-        <span title={card.reason}>ⓘ</span>
+          {collapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
+        </button>
+      </div>
+      <div id={bodyId} hidden={collapsed}>
+        <CardContent card={card} onOpen={onOpen} />
+        <div className="card-status">
+          <select
+            aria-label={`${card.name} 的狀態`}
+            value={card.status}
+            disabled={pending || disabled}
+            onChange={(e) => {
+              const status = statuses.find((item) => item === e.target.value);
+              if (status && status !== card.status) onSave(status);
+            }}
+          >
+            {statuses.map((status) => (
+              <option key={status} value={status}>
+                {labels[status]}
+              </option>
+            ))}
+          </select>
+          <span title={card.reason}>ⓘ</span>
+        </div>
       </div>
     </article>
   );
@@ -181,55 +199,38 @@ function Column({
   children: ReactNode;
 }) {
   const { setNodeRef } = useDroppable({ id: `column:${status}` });
+  const bodyId = useId();
+  const Chevron = collapsed ? ChevronRight : ChevronDown;
   return (
     <section
       ref={setNodeRef}
-      className={`column ${status === "legacy" ? "legacy-column" : ""} ${collapsed ? "collapsed" : ""} ${over ? "drop-target" : ""}`}
+      className={`column ${collapsed ? "collapsed" : ""} ${over ? "drop-target" : ""}`}
       aria-label={labels[status]}
     >
-      {collapsed ? (
+      <h2 className="column-header">
         <button
           type="button"
-          className="legacy-rail"
-          aria-label={`展開 Legacy，${count} 個 repo`}
-          aria-expanded={false}
+          className="column-toggle"
+          aria-label={`${collapsed ? "展開" : "收合"} ${labels[status]}，${count} 個 repo`}
+          aria-expanded={!collapsed}
+          aria-controls={bodyId}
           onClick={toggle}
         >
-          <ChevronRight size={17} />
-          <span className="rail-title">Legacy</span>
-          <span className="rail-count">{count}</span>
+          <i className={`status-dot ${status}`} />
+          <span className="column-title">{labels[status]}</span>
+          <span className="column-count">{count}</span>
+          <Chevron size={18} className="column-toggle-icon" />
         </button>
-      ) : (
-        <>
-          <div className="column-header">
-            <div>
-              <i className={`status-dot ${status}`} />
-              <h2>{labels[status]}</h2>
-              <span>{count}</span>
-            </div>
-            {status === "legacy" ? (
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="收合 Legacy"
-                aria-expanded={true}
-                onClick={toggle}
-              >
-                <ChevronLeft size={16} />
-              </button>
-            ) : status === "archive" ? (
-              <Archive size={15} />
-            ) : null}
-          </div>
-          <p className="column-caption">{descriptions[status]}</p>
-          <div className="card-stack">
-            {children}
-            {count === 0 ? (
-              <div className="empty-column">拖曳 repo 到這裡</div>
-            ) : null}
-          </div>
-        </>
-      )}
+      </h2>
+      <div id={bodyId} hidden={collapsed}>
+        <p className="column-caption">{descriptions[status]}</p>
+        <div className="card-stack">
+          {collapsed ? null : children}
+          {count === 0 ? (
+            <div className="empty-column">拖曳 repo 到這裡</div>
+          ) : null}
+        </div>
+      </div>
     </section>
   );
 }
@@ -238,14 +239,18 @@ export function KanbanBoard({
   visibleIds,
   pending,
   disabled,
+  collapsedColumns,
+  collapsedCards,
+  onToggleColumn,
+  onToggleCard,
   onOpen,
   onSave,
 }: Props) {
-  const [legacyOpen, setLegacyOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overStatus, setOverStatus] = useState<Status | null>(null);
   const [draft, setDraft] = useState<Card[] | null>(null);
   const draftRef = useRef<Card[] | null>(null);
+  const keyboardTarget = useRef<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   useEffect(() => {
     const media = matchMedia("(prefers-reduced-motion: reduce)");
@@ -254,23 +259,52 @@ export function KanbanBoard({
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
+  const collision: CollisionDetection = (args) => {
+    if (!args.pointerCoordinates) {
+      return keyboardTarget.current
+        ? [{ id: keyboardTarget.current }]
+        : closestCenter(args);
+    }
+    const hits = pointerWithin(args);
+    const cards = hits.filter((hit) => !String(hit.id).startsWith("column:"));
+    return cards.length ? cards : hits;
+  };
   const keyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
-    if (event.code !== "ArrowLeft" && event.code !== "ArrowRight")
-      return sortableKeyboardCoordinates(event, args);
+    const { code } = event;
+    const acrossColumns = code === "ArrowLeft" || code === "ArrowRight";
+    if (!acrossColumns && code !== "ArrowUp" && code !== "ArrowDown") return;
     event.preventDefault();
+    const step = code === "ArrowRight" || code === "ArrowDown" ? 1 : -1;
     const items = draftRef.current ?? cards;
-    const current = target(String(args.context.over?.id ?? args.active), items);
-    const index = current ? statuses.indexOf(current) : -1;
-    const next = statuses[index + (event.code === "ArrowRight" ? 1 : -1)];
-    const rect = next
-      ? args.context.droppableRects.get(`column:${next}`)
-      : undefined;
+    const overId = keyboardTarget.current ?? String(args.active);
+    const current = target(overId, items);
+    if (!current) return;
+
+    let nextId: string | undefined;
+    if (acrossColumns) {
+      const next = statuses[statuses.indexOf(current) + step];
+      if (next) nextId = `column:${next}`;
+    } else {
+      const siblings = items
+        .filter(
+          (card) => card.status === current && visibleIds.has(card.repoId),
+        )
+        .sort(compareCards);
+      const currentId = overId.startsWith("column:") ? args.active : overId;
+      const index = siblings.findIndex((card) => card.repoId === currentId);
+      if (index >= 0) nextId = siblings[index + step]?.repoId;
+    }
+    if (!nextId) return;
+    const rect = args.context.droppableRects.get(nextId);
     const activeRect = args.context.collisionRect;
-    if (rect && activeRect)
-      return {
-        x: rect.left + (rect.width - activeRect.width) / 2,
-        y: rect.top + (rect.height - activeRect.height) / 2,
-      };
+    if (!rect || !activeRect) return;
+    keyboardTarget.current = nextId;
+    return {
+      x: rect.left + (rect.width - activeRect.width) / 2,
+      y: acrossColumns
+        ? rect.top
+        : rect.top + (rect.height - activeRect.height) / 2,
+    };
   };
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
@@ -296,7 +330,6 @@ export function KanbanBoard({
     const items = draftRef.current ?? cards;
     const status = target(String(event.over.id), items);
     setOverStatus(status ?? null);
-    if (status === "legacy") setLegacyOpen(true);
     const card = items.find((item) => item.repoId === String(event.active.id));
     if (!card || !status || card.status === status) return;
     const change = placeCard(items, card.repoId, status, String(event.over.id));
@@ -311,6 +344,7 @@ export function KanbanBoard({
     setOverStatus(null);
     setDraft(null);
     draftRef.current = null;
+    keyboardTarget.current = null;
   }
   function drop(event: DragEndEvent) {
     const original = cards.find(
@@ -380,10 +414,7 @@ export function KanbanBoard({
         },
       }}
     >
-      <section
-        className={`kanban ${legacyOpen ? "legacy-expanded" : ""} ${activeId ? "is-dragging" : ""}`}
-        aria-label="Repository 看板"
-      >
+      <section className="kanban" aria-label="Repository 看板">
         {statuses.map((status) => {
           const columnCards = display
             .filter(
@@ -395,8 +426,8 @@ export function KanbanBoard({
               key={status}
               status={status}
               count={columnCards.length}
-              collapsed={status === "legacy" && !legacyOpen}
-              toggle={() => setLegacyOpen((open) => !open)}
+              collapsed={collapsedColumns.has(status)}
+              toggle={() => onToggleColumn(status)}
               over={activeId !== null && status === overStatus}
             >
               <SortableContext
@@ -409,8 +440,10 @@ export function KanbanBoard({
                     card={card}
                     pending={pending.has(card.repoId)}
                     disabled={disabled}
+                    collapsed={collapsedCards.has(card.repoId)}
                     reducedMotion={reducedMotion}
                     onOpen={() => onOpen(card.repoId)}
+                    onToggle={() => onToggleCard(card.repoId)}
                     onSave={(status) => {
                       void onSave(
                         card,
@@ -432,13 +465,19 @@ export function KanbanBoard({
         }
       >
         {active ? (
-          <article className="repo-card drag-overlay">
-            <div className="drag-handle">
-              <GripVertical size={15} />
-              <span>移動中</span>
+          <article className="repo-card drag-overlay" aria-hidden="true">
+            <div className="card-top">
+              <div className="drag-handle">
+                <GripVertical size={18} />
+                <span className="card-title">{active.name}</span>
+              </div>
             </div>
-            <CardContent card={active} />
-            <div className="overlay-status">{labels[active.status]}</div>
+            {collapsedCards.has(active.repoId) ? null : (
+              <>
+                <CardContent card={active} />
+                <div className="overlay-status">{labels[active.status]}</div>
+              </>
+            )}
           </article>
         ) : null}
       </DragOverlay>
